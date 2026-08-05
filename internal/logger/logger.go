@@ -15,5 +15,5 @@ func New(env string) *slog.Logger {
 	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: level,
 	})
-	return slog.New(handler).With("service", "router")
+	return slog.New(handler)
 }

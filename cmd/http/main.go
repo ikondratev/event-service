@@ -4,7 +4,7 @@ import (
 	"os"
 	"log/slog"
 
-	"microserice/lib/application"
+	"microserice/internal/application"
 )
 
 const env = "dev"

@@ -2,8 +2,8 @@ package router
 
 import (
 	"log/slog"
-	"microserice/lib/handlers"
-	"microserice/lib/middleware"
+	"microserice/internal/handlers"
+	"microserice/internal/middleware"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -24,11 +24,12 @@ func New(logger *slog.Logger) *Router {
 	}
 }
 
-func (r *Router) registerHandlers() {
+func (r *Router) RegisterRotes() *mux.Router {
+	eventHandler := handlers.NewEventHandler(r.logger)
 	r.engine.HandleFunc("/ping", handlers.Pong).Methods(http.MethodGet)
-}
+	api := r.engine.PathPrefix("/api/v1").Subrouter()
+	api.HandleFunc("/event", eventHandler.CreateEvent).Methods(http.MethodPost)
+	api.HandleFunc("/events", eventHandler.GetEvents).Methods(http.MethodGet)
 
-func (r *Router) Register() *mux.Router {
-	r.registerHandlers()
 	return r.engine
 }
