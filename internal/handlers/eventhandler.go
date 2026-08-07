@@ -4,56 +4,67 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+
+	"microserice/internal/domain/event"
+	eventdto "microserice/internal/dto/event"
 )
 
-type Event struct {
-	Kind   string `json:"kind"`
-	Data   string `json:"data"`
-	Status string `json:"status"`
-}
-
 type EventHandler struct {
-	logger *slog.Logger
+	logger    *slog.Logger
+	repo      event.EventRepo
 }
 
-func NewEventHandler(logger *slog.Logger) * EventHandler {
-	return &EventHandler{logger: logger}
+func NewEventHandler(logger *slog.Logger, eventRepo event.EventRepo) * EventHandler {
+	return &EventHandler{
+		logger: logger,
+		repo: 	eventRepo,
+	}
 }
 
 func (h *EventHandler) CreateEvent(w http.ResponseWriter, r *http.Request) {
-	var event Event
+	var req eventdto.CreateRequest
 
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	
-	if err := decoder.Decode(&event); err != nil {
+	if err := decoder.Decode(&req); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	if event.Kind == "" || event.Data == "" || event.Status == "" {
+	if req.Kind == "" || req.Data == "" || req.Status == "" {
 		http.Error(w, "kind, data, status are requeired", http.StatusBadRequest)
 		return
 	}
 
-	h.logger.Info("event created", "event", event)
+	domainEvent := eventdto.ToDomain(req)
+
+	if err := h.repo.Create(r.Context(), domainEvent); err != nil {
+		h.logger.Error("failed to create event", "error", err)
+		http.Error(w, "failed to create event", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-
-	json.NewEncoder(w).Encode(event)
+	json.NewEncoder(w).Encode(eventdto.ToResponse(*domainEvent))
 }
 
 func (h *EventHandler) GetEvents(w http.ResponseWriter, r *http.Request) {
-	event := Event{
-		Kind:   "LOGO",
-		Data:   "Data",
-		Status: "Status",
-	}
-	
-	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(event)
+	events, err := h.repo.List(r.Context())
 	if err != nil {
-		http.Error(w, "failed to encode", http.StatusInternalServerError)
+		h.logger.Error("failed to list events", "error", err)
+		http.Error(w, "failed to get events", http.StatusInternalServerError)
 		return
+	}
+
+	response := make([]eventdto.Response, 0, len(events))
+	for _, e := range events {
+		response = append(response, eventdto.ToResponse(e) )
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "failed to encode", http.StatusInternalServerError)
 	}
 }

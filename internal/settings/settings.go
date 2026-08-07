@@ -11,12 +11,27 @@ const (
 	fileName = "settings.json"
 )
 
-
 type Settings struct {
-	Host            string `json:"host"`
+	Environment string `json:"environment"`
+	Server 		Server  `json:"server"`
+	Db	   		Db	   `json:"db"`
+}
+
+type Server struct {
 	Port            string `json:"port"`
-	Environment     string `json:"environment"`
 	WaitingShutdown int    `json:"waiting_shutdown"`
+	HeaderTimeout   int    `json:"header_timout"`
+	ReadTimeout     int    `json:"read_timout"`
+	WriteTimeout    int    `json:"write_timeout"`
+	IdleTimeout     int    `json:"idle_timeout"` 
+}
+
+type Db struct {
+	Url 		   string `json:"url"`
+	OpenConnection    int `json:"open_conn"`
+	MaxIdleConnection int `json:"max_idle_conn"`
+	MaxLifeTime		  int `json:"max_life_time"`
+	StartDelay		  int `json:"start_delay"`
 }
 
 func New(env string) (*Settings, error) {
