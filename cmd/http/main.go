@@ -4,7 +4,7 @@ import (
 	"os"
 	"log/slog"
 
-	"microserice/internal/application"
+	"github.com/ikondratev/event-service/internal/application"
 )
 
 const env = "dev"

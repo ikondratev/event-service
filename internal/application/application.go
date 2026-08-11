@@ -11,14 +11,14 @@ import (
 	"syscall"
 	"time"
 
-	"microserice/internal/kafka"
-	"microserice/internal/logger"
-	"microserice/internal/router"
-	"microserice/internal/settings"
-	"microserice/internal/storage/postgres"
+	"github.com/ikondratev/event-service/internal/kafka"
+	"github.com/ikondratev/event-service/internal/logger"
+	"github.com/ikondratev/event-service/internal/router"
+	"github.com/ikondratev/event-service/internal/settings"
+	"github.com/ikondratev/event-service/internal/storage/postgres"
 
-	worker "microserice/internal/workers"
-	eventrepo "microserice/internal/repo/postgres"
+	worker "github.com/ikondratev/event-service/internal/workers"
+	eventrepo "github.com/ikondratev/event-service/internal/repo/postgres"
 )
 
 type Application struct {

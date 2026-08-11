@@ -6,8 +6,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	
-	"microserice/internal/domain/event"
-	"microserice/internal/settings"
+	"github.com/ikondratev/event-service/internal/domain/event"
+	"github.com/ikondratev/event-service/internal/settings"
 )
 
 type EventRepo struct {

@@ -3,7 +3,7 @@ package kafka
 import (
 	"context"
 	"fmt"
-	"microserice/internal/settings"
+	"github.com/ikondratev/event-service/internal/settings"
 
 	kafkago "github.com/segmentio/kafka-go"
 )

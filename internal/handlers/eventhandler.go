@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"microserice/internal/domain/event"
-	eventdto "microserice/internal/dto/event"
+	"github.com/ikondratev/event-service/internal/domain/event"
+	eventdto "github.com/ikondratev/event-service/internal/dto/event"
 )
 
 type EventHandler struct {

@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"microserice/internal/kafka"
-	"microserice/internal/repo/postgres"
-	"microserice/internal/settings"
+	"github.com/ikondratev/event-service/internal/kafka"
+	"github.com/ikondratev/event-service/internal/repo/postgres"
+	"github.com/ikondratev/event-service/internal/settings"
 	"sync"
 	"time"
 )

@@ -4,9 +4,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"microserice/internal/domain/event"
-	"microserice/internal/handlers"
-	"microserice/internal/middleware"
+	"github.com/ikondratev/event-service/internal/domain/event"
+	"github.com/ikondratev/event-service/internal/handlers"
+	"github.com/ikondratev/event-service/internal/middleware"
 
 	"github.com/gorilla/mux"
 )

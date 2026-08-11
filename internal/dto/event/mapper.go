@@ -1,6 +1,6 @@
 package eventdto
 
-import "microserice/internal/domain/event"
+import "github.com/ikondratev/event-service/internal/domain/event"
 
 func ToDomain(req CreateRequest) *event.Event {
 	return &event.Event{
