@@ -11,19 +11,24 @@ import (
 	"syscall"
 	"time"
 
+	"microserice/internal/kafka"
 	"microserice/internal/logger"
 	"microserice/internal/router"
 	"microserice/internal/settings"
 	"microserice/internal/storage/postgres"
 
+	worker "microserice/internal/workers"
 	eventrepo "microserice/internal/repo/postgres"
 )
 
 type Application struct {
-	logger   *slog.Logger
-	settings *settings.Settings
-	server   *http.Server
-	db 		 *postgres.Db
+	logger   	 *slog.Logger
+	settings 	 *settings.Settings
+	server   	 *http.Server
+	db 		 	 *postgres.Db
+	kproducer 	 *kafka.Producer
+	worker   	 *worker.OutboxWorker
+	workerCancel context.CancelFunc
 }
 
 func New(env string) (*Application, error) {
@@ -41,8 +46,15 @@ func New(env string) (*Application, error) {
 		return nil, fmt.Errorf("Open db error: %w", err)
 	}
 
-	// Init repo
-	eventRepo := eventrepo.NewEventRepo(database.Adapter)
+	// Init repos
+	eventRepo := eventrepo.NewEventRepo(database.Adapter, settings)
+	outboxRepo := eventrepo.NewOutboxRepo(database.Adapter)
+
+	// Kafa
+	producer := kafka.NewProducer(settings)
+
+	// Workers
+	outboxWorker := worker.NewOutboxWorker(logger, outboxRepo, producer, settings)
 
 	// Init routes
 	routes := router.New(logger, eventRepo).RegisterRotes()
@@ -57,14 +69,21 @@ func New(env string) (*Application, error) {
 	
 	// Finaly App
 	return &Application{
-		logger:   logger,
-		settings: settings,
-		server:   server,
-		db: 	  database,
+		logger:    logger,
+		settings:  settings,
+		server:    server,
+		db: 	   database,
+		kproducer: producer,
+		worker:    outboxWorker,
 	}, nil
 }
 
 func (a *Application) Run() error {
+	workerCtx, workerCancel := context.WithCancel(context.Background())
+	a.workerCancel = workerCancel
+
+	go a.worker.Run(workerCtx)
+
 	chErr := make(chan error, 1)
 	go a.startServer(chErr)
 
@@ -75,11 +94,40 @@ func (a *Application) Run() error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(a.settings.Server.WaitingShutdown)*time.Second)
+	ctx, cancel := context.WithTimeout(
+		context.Background(), 
+		time.Duration(a.settings.Server.WaitingShutdown)*time.Second,
+	)
 	defer cancel()
 
+	// Stop http
 	if err := a.server.Shutdown(ctx); err != nil {
 		return fmt.Errorf("server shutdown error: %w", err)
+	}
+
+	// Stop worker
+	if a.workerCancel != nil {
+		a.workerCancel()
+		a.worker.Wait()
+		a.logger.Info("Outbox worker canceled")
+	}
+
+	// Stop kafka
+	if a.kproducer != nil {
+		flushCtx, flushCancel := context.WithTimeout(
+			ctx, 
+			time.Duration(a.settings.Kafka.FlushTimeout)*time.Second,
+		)
+		if err := a.kproducer.Flush(flushCtx); err != nil {
+			a.logger.Error("Flush Kafka error", "error", err)
+		}
+		flushCancel()
+
+		if err := a.kproducer.Close(); err != nil {
+			return fmt.Errorf("Stop producer error: %w", err)
+		}
+
+		a.logger.Info("Kafka producer closed")
 	}
 
 	if a.db != nil {

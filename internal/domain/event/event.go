@@ -13,7 +13,6 @@ type Event struct {
 	CreatedAt time.Time
 }
 
-
 type EventRepo interface {
 	Create(ctx context.Context, e *Event) error
 	List(ctx context.Context) ([]Event, error)

@@ -1,28 +1,68 @@
 package postgres
 
 import (
+	"fmt"
 	"context"
 	"database/sql"
+	"encoding/json"
+	
 	"microserice/internal/domain/event"
+	"microserice/internal/settings"
 )
 
 type EventRepo struct {
-	db *sql.DB
+	db 		   *sql.DB
+	settings   *settings.Settings
 }
 
-func NewEventRepo(db *sql.DB) *EventRepo {
-	return &EventRepo{db: db}
+func NewEventRepo(db *sql.DB, settings *settings.Settings) *EventRepo {
+	return &EventRepo{
+		db: 		db,
+		settings:   settings,
+	}
 }
 
 var _ event.EventRepo = (*EventRepo)(nil)
 
 func (r *EventRepo) Create(ctx context.Context, e *event.Event) error {
-	query := `
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("TX error: %w", err)
+	}
+	defer tx.Rollback()
+
+	queryEvent := `
 		INSERT INTO events (kind, data, status)
 		VALUES ($1, $2, $3)
 		RETURNING id, created_at
 	`
-	return r.db.QueryRowContext(ctx, query, e.Kind, e.Data, e.Status).Scan(&e.ID, &e.CreatedAt)
+
+	if err := tx.QueryRowContext(ctx, queryEvent, e.Kind, e.Data, e.Status).
+	Scan(&e.ID, &e.CreatedAt); err != nil {
+		return err
+	}
+
+	payload, err := json.Marshal(map[string]any{
+		"id": 		  e.ID,
+		"kind": 	  e.Kind,
+		"data": 	  e.Data,
+		"status": 	  e.Status,
+		"created_at": e.CreatedAt,
+	})
+	if err != nil {
+		return err
+	}
+
+	queryOutbox := `
+		INSERT INTO outbox (event_id, topic, payload, status)
+		VALUES ($1, $2, $3, 'pending')
+	`
+	if _, err := tx.ExecContext(ctx, queryOutbox, e.ID, r.settings.Kafka.Topics["events_created"], payload); err != nil {
+		return err
+	}
+	
+
+	return tx.Commit()	
 }
 
 func (r *EventRepo) List(ctx context.Context) ([]event.Event, error) {

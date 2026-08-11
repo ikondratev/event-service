@@ -15,6 +15,7 @@ type Settings struct {
 	Environment string `json:"environment"`
 	Server 		Server  `json:"server"`
 	Db	   		Db	   `json:"db"`
+	Kafka		Kafka  `json:"kafka"`
 }
 
 type Server struct {
@@ -24,6 +25,14 @@ type Server struct {
 	ReadTimeout     int    `json:"read_timout"`
 	WriteTimeout    int    `json:"write_timeout"`
 	IdleTimeout     int    `json:"idle_timeout"` 
+}
+
+type Kafka struct {
+	Brokers 	   []string 		 `json:"brokers"`
+	Topics  	   map[string]string `json:"topics"`
+	PollInterval   int 				 `json:"poll_interval"`
+	BatchSize 	   int 				 `json:"batch_size"`
+	FlushTimeout   int 				 `json:"flush_timeout"`
 }
 
 type Db struct {
