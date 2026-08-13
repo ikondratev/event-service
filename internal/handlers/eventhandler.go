@@ -28,43 +28,56 @@ func (h *EventHandler) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	decoder.DisallowUnknownFields()
 	
 	if err := decoder.Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	if req.Kind == "" || req.Data == "" || req.Status == "" {
-		http.Error(w, "kind, data, status are requeired", http.StatusBadRequest)
+	if err := req.Validate(); err != nil {
+		if verr, ok := err.(*eventdto.ValidationError); ok {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"errors": verr.Errors})
+			return
+		}
+		writeError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
 
-	domainEvent := eventdto.ToDomain(req)
+	domainEvent, err := eventdto.ToDomain(req)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid event data")
+		return
+	}
 
 	if err := h.repo.Create(r.Context(), domainEvent); err != nil {
 		h.logger.Error("failed to create event", "error", err)
-		http.Error(w, "failed to create event", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "failed to create event")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(eventdto.ToResponse(*domainEvent))
+	writeJSON(w, http.StatusCreated, eventdto.ToResponse(*domainEvent))
 }
 
 func (h *EventHandler) GetEvents(w http.ResponseWriter, r *http.Request) {
 	events, err := h.repo.List(r.Context())
 	if err != nil {
 		h.logger.Error("failed to list events", "error", err)
-		http.Error(w, "failed to get events", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "failed to get events")
 		return
 	}
 
 	response := make([]eventdto.Response, 0, len(events))
 	for _, e := range events {
-		response = append(response, eventdto.ToResponse(e) )
+		response = append(response, eventdto.ToResponse(e))
 	}
+	
+	writeJSON(w, http.StatusOK, response)
+}
 
+func writeJSON(w http.ResponseWriter, status int, body any) {
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		http.Error(w, "failed to encode", http.StatusInternalServerError)
-	}
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(body)
+}
+
+func writeError(w http.ResponseWriter, status int, message string) {
+	writeJSON(w, status, map[string]string{"error": message})
 }

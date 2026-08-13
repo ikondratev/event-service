@@ -42,12 +42,17 @@ func (r *EventRepo) Create(ctx context.Context, e *event.Event) error {
 		return err
 	}
 
+	var dataObj any
+	if err := json.Unmarshal([]byte(e.Data), &dataObj); err != nil {
+		return fmt.Errorf("unmarshal event data: %w", err)
+	}
+
 	payload, err := json.Marshal(map[string]any{
 		"id": 		  e.ID,
 		"kind": 	  e.Kind,
-		"data": 	  e.Data,
 		"status": 	  e.Status,
 		"created_at": e.CreatedAt,
+		"data": 	  dataObj,
 	})
 	if err != nil {
 		return err

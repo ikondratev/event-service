@@ -12,8 +12,6 @@ type Publisher interface {
 	Close() error
 }
 
-// var _, kafka.Producer = (*Publisher)(nil)
-
 type Producer struct {
 	writer *kafkago.Writer
 }
