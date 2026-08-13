@@ -1,20 +1,28 @@
 package eventdto
 
-import "github.com/ikondratev/event-service/internal/domain/event"
+import (
+	"encoding/json"
 
-func ToDomain(req CreateRequest) *event.Event {
+	"github.com/ikondratev/event-service/internal/domain/event"
+)
+
+func ToDomain(req CreateRequest) (*event.Event, error) {
+	raw, err := json.Marshal(req.Data)
+	if err != nil {
+		return nil, err
+	}
+
 	return &event.Event{
 		Kind:   req.Kind,
-		Data:   req.Data,
 		Status: req.Status,
-	}
+		Data:   string(raw),
+	}, nil
 }
 
 func ToResponse(e event.Event) Response {
 	return Response {
 		ID:        e.ID,
 		Kind:      e.Kind,
-		Data:      e.Data,
 		Status:    e.Status,
 		CreatedAt: e.CreatedAt,
 	}

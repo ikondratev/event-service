@@ -7,9 +7,12 @@ import (
 	"github.com/ikondratev/event-service/internal/application"
 )
 
-const env = "dev"
-
 func main() {
+	env := os.Getenv("APP_ENV")
+	if env == "" {
+		env = "dev"
+	}
+	
 	app, err := application.New(env)
 	if err != nil {
 		slog.Error("app load with error", "error", err)
