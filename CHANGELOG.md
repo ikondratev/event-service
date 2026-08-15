@@ -3,6 +3,13 @@
 ## [Unreleased]
 ### Changed
 
+## [0.6.0] - 2026-08-15
+### Added
+
+- Add Idempotency Key.
+- Add validation for event dto.
+- Table, written in the same transaction as `idempotency_keys`.
+
 ## [0.5.0] - 2026-08-11
 ### Added
 
@@ -41,7 +48,8 @@
 
 - Initial commit: Go service scaffold, `cmd/http/main.go`.
 
-[Unreleased]: https://github.com/ikondratev/event-service/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/ikondratev/event-service/compare/v0.6.0...HEAD
+[0.5.0]: https://github.com/ikondratev/event-service/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ikondratev/event-service/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/ikondratev/event-service/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/ikondratev/event-service/compare/v0.2.0...v0.3.0
