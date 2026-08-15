@@ -1,11 +1,12 @@
 package postgres
 
 import (
-	"fmt"
 	"context"
 	"database/sql"
 	"encoding/json"
-	
+	"errors"
+	"fmt"
+
 	"github.com/ikondratev/event-service/internal/domain/event"
 	"github.com/ikondratev/event-service/internal/settings"
 )
@@ -25,11 +26,10 @@ func NewEventRepo(db *sql.DB, settings *settings.Settings) *EventRepo {
 var _ event.EventRepo = (*EventRepo)(nil)
 
 func (r *EventRepo) Create(ctx context.Context, e *event.Event) error {
-	tx, err := r.db.BeginTx(ctx, nil)
+	tx, err := requireTx(ctx)
 	if err != nil {
-		return fmt.Errorf("TX error: %w", err)
+		return err
 	}
-	defer tx.Rollback()
 
 	queryEvent := `
 		INSERT INTO events (kind, data, status)
@@ -38,8 +38,8 @@ func (r *EventRepo) Create(ctx context.Context, e *event.Event) error {
 	`
 
 	if err := tx.QueryRowContext(ctx, queryEvent, e.Kind, e.Data, e.Status).
-	Scan(&e.ID, &e.CreatedAt); err != nil {
-		return err
+		Scan(&e.ID, &e.CreatedAt); err != nil {
+			return err
 	}
 
 	var dataObj any
@@ -48,12 +48,13 @@ func (r *EventRepo) Create(ctx context.Context, e *event.Event) error {
 	}
 
 	payload, err := json.Marshal(map[string]any{
-		"id": 		  e.ID,
-		"kind": 	  e.Kind,
-		"status": 	  e.Status,
+		"id":         e.ID,
+		"kind":       e.Kind,
+		"status":     e.Status,
 		"created_at": e.CreatedAt,
-		"data": 	  dataObj,
+		"data":       dataObj,
 	})
+
 	if err != nil {
 		return err
 	}
@@ -65,9 +66,8 @@ func (r *EventRepo) Create(ctx context.Context, e *event.Event) error {
 	if _, err := tx.ExecContext(ctx, queryOutbox, e.ID, r.settings.Kafka.Topics["events_created"], payload); err != nil {
 		return err
 	}
-	
 
-	return tx.Commit()	
+	return nil
 }
 
 func (r *EventRepo) List(ctx context.Context) ([]event.Event, error) {
@@ -99,4 +99,31 @@ func (r *EventRepo) List(ctx context.Context) ([]event.Event, error) {
 	}
 
 	return events, rows.Err()
+}
+
+func (r *EventRepo) GetByID(ctx context.Context, id int64) (*event.Event, error) {
+	tx, err := requireTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	query := `
+		SELECT id, kind, data, status, created_at
+		FROM events
+		WHERE id = $1
+	`
+
+	var e event.Event
+
+	err = tx.QueryRowContext(ctx, query, id).Scan(
+		&e.ID, &e.Kind, &e.Data, &e.Status, &e.CreatedAt,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, event.ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &e, nil
 }

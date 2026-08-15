@@ -16,6 +16,7 @@ import (
 	"github.com/ikondratev/event-service/internal/router"
 	"github.com/ikondratev/event-service/internal/settings"
 	"github.com/ikondratev/event-service/internal/storage/postgres"
+	"github.com/ikondratev/event-service/internal/service/event"
 
 	worker "github.com/ikondratev/event-service/internal/workers"
 	eventrepo "github.com/ikondratev/event-service/internal/repo/postgres"
@@ -49,6 +50,11 @@ func New(env string) (*Application, error) {
 	// Init repos
 	eventRepo := eventrepo.NewEventRepo(database.Adapter, settings)
 	outboxRepo := eventrepo.NewOutboxRepo(database.Adapter)
+	idemRepo := eventrepo.NewIdempotencyRepo(database.Adapter)
+
+	// Services
+	tx := postgres.NewTransactor(database.Adapter)
+	service := eventsvc.New(tx, idemRepo, eventRepo) 
 
 	// Kafa
 	producer := kafka.NewProducer(settings)
@@ -57,7 +63,7 @@ func New(env string) (*Application, error) {
 	outboxWorker := worker.NewOutboxWorker(logger, outboxRepo, producer, settings)
 
 	// Init routes
-	routes := router.New(logger, eventRepo).RegisterRotes()
+	routes := router.New(logger, service).RegisterRotes()
 	server := &http.Server{
 		Addr:              settings.Server.Port,
 		Handler:           routes,
