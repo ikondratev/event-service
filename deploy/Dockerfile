@@ -13,6 +13,11 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
     -o /app/bin/http \
     ./cmd/http
 
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-s -w" \
+    -o /app/bin/worker \
+    ./cmd/worker    
+
 FROM alpine:3.21
 
 RUN apk add --no-cache ca-certificates \
@@ -21,6 +26,7 @@ RUN apk add --no-cache ca-certificates \
 WORKDIR /app
 
 COPY --from=builder /app/bin/http /app/http
+COPY --from=builder /app/bin/worker /app/worker
 
 USER appuser
 EXPOSE 3333

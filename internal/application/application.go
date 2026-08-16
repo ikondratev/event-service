@@ -11,14 +11,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ikondratev/event-service/internal/kafka"
 	"github.com/ikondratev/event-service/internal/logger"
 	"github.com/ikondratev/event-service/internal/router"
 	"github.com/ikondratev/event-service/internal/settings"
 	"github.com/ikondratev/event-service/internal/storage/postgres"
 	"github.com/ikondratev/event-service/internal/service/event"
 
-	worker "github.com/ikondratev/event-service/internal/workers"
 	eventrepo "github.com/ikondratev/event-service/internal/repo/postgres"
 )
 
@@ -27,9 +25,6 @@ type Application struct {
 	settings 	 *settings.Settings
 	server   	 *http.Server
 	db 		 	 *postgres.Db
-	kproducer 	 *kafka.Producer
-	worker   	 *worker.OutboxWorker
-	workerCancel context.CancelFunc
 }
 
 func New(env string) (*Application, error) {
@@ -49,18 +44,11 @@ func New(env string) (*Application, error) {
 
 	// Init repos
 	eventRepo := eventrepo.NewEventRepo(database.Adapter, settings)
-	outboxRepo := eventrepo.NewOutboxRepo(database.Adapter)
 	idemRepo := eventrepo.NewIdempotencyRepo(database.Adapter)
 
 	// Services
 	tx := postgres.NewTransactor(database.Adapter)
 	service := eventsvc.New(tx, idemRepo, eventRepo) 
-
-	// Kafa
-	producer := kafka.NewProducer(settings)
-
-	// Workers
-	outboxWorker := worker.NewOutboxWorker(logger, outboxRepo, producer, settings)
 
 	// Init routes
 	routes := router.New(logger, service).RegisterRotes()
@@ -79,17 +67,10 @@ func New(env string) (*Application, error) {
 		settings:  settings,
 		server:    server,
 		db: 	   database,
-		kproducer: producer,
-		worker:    outboxWorker,
 	}, nil
 }
 
 func (a *Application) Run() error {
-	workerCtx, workerCancel := context.WithCancel(context.Background())
-	a.workerCancel = workerCancel
-
-	go a.worker.Run(workerCtx)
-
 	chErr := make(chan error, 1)
 	go a.startServer(chErr)
 
@@ -111,31 +92,7 @@ func (a *Application) Run() error {
 		return fmt.Errorf("server shutdown error: %w", err)
 	}
 
-	// Stop worker
-	if a.workerCancel != nil {
-		a.workerCancel()
-		a.worker.Wait()
-		a.logger.Info("Outbox worker canceled")
-	}
-
-	// Stop kafka
-	if a.kproducer != nil {
-		flushCtx, flushCancel := context.WithTimeout(
-			ctx, 
-			time.Duration(a.settings.Kafka.FlushTimeout)*time.Second,
-		)
-		if err := a.kproducer.Flush(flushCtx); err != nil {
-			a.logger.Error("Flush Kafka error", "error", err)
-		}
-		flushCancel()
-
-		if err := a.kproducer.Close(); err != nil {
-			return fmt.Errorf("Stop producer error: %w", err)
-		}
-
-		a.logger.Info("Kafka producer closed")
-	}
-
+	// Stop DB
 	if a.db != nil {
 		if err := a.db.Adapter.Close(); err != nil {
 			return fmt.Errorf("db close error: %w", err)
