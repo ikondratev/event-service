@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 )
 
 const (
@@ -16,6 +17,7 @@ type Settings struct {
 	Server 		Server  `json:"server"`
 	Db	   		Db	   `json:"db"`
 	Kafka		Kafka  `json:"kafka"`
+	Worker 		Worker `json:"worker"`
 }
 
 type Server struct {
@@ -43,6 +45,13 @@ type Db struct {
 	StartDelay		  int `json:"start_delay"`
 }
 
+type Worker struct {
+	LeaseSeconds 	int `json:"lease_seconds"`
+	MaxAttempts 	int `json:"max_attempts"`
+	BackoffSeconds 	int `json:"backoff_seconds"`
+	TimeoutSeconds	int `json:"timeout_seconds"`
+}
+
 func New(env string) (*Settings, error) {
 	var set Settings
 	filePath := fmt.Sprintf("%s/%s.%s", settingsPath, env, fileName )
@@ -53,6 +62,14 @@ func New(env string) (*Settings, error) {
 
 	if err := json.Unmarshal(data, &set); err != nil {
 		return nil, fmt.Errorf("UnmarshalFileError: %w", err)
+	}
+
+	if path := os.Getenv("DB_URL_FILE"); path != "" {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("db url file: %w", err)
+		}
+		set.Db.Url = strings.TrimSpace(string(raw))
 	}
 
 	return &set, nil
