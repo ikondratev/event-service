@@ -3,6 +3,12 @@
 ## [Unreleased]
 ### Changed
 
+## [0.7.0] - 2026-08-16
+### Added
+
+- Separate http and worker.
+- Add version for docker swarm.
+
 ## [0.6.0] - 2026-08-15
 ### Added
 
@@ -48,8 +54,9 @@
 
 - Initial commit: Go service scaffold, `cmd/http/main.go`.
 
-[Unreleased]: https://github.com/ikondratev/event-service/compare/v0.6.0...HEAD
-[0.5.0]: https://github.com/ikondratev/event-service/compare/v0.5.0...v0.6.0
+[Unreleased]: https://github.com/ikondratev/event-service/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/ikondratev/event-service/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/ikondratev/event-service/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ikondratev/event-service/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/ikondratev/event-service/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/ikondratev/event-service/compare/v0.2.0...v0.3.0
