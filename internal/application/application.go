@@ -11,11 +11,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ikondratev/event-service/internal/auth"
 	"github.com/ikondratev/event-service/internal/logger"
 	"github.com/ikondratev/event-service/internal/router"
+	"github.com/ikondratev/event-service/internal/service/event"
 	"github.com/ikondratev/event-service/internal/settings"
 	"github.com/ikondratev/event-service/internal/storage/postgres"
-	"github.com/ikondratev/event-service/internal/service/event"
 
 	eventrepo "github.com/ikondratev/event-service/internal/repo/postgres"
 )
@@ -36,6 +37,16 @@ func New(env string) (*Application, error) {
 		return nil, fmt.Errorf("Error: Load settings: %w", err)
 	}
 
+	// Init verifier
+	verifier, err := auth.NewVerifier(
+		settings.Auth.Issuer,
+		settings.Auth.Audience,
+		settings.Auth.PublicKeyPath,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("auth verifier: %w", err)
+	}
+
 	// Init db
 	database, err := postgres.New(context.Background(), settings)
 	if err != nil {
@@ -51,7 +62,7 @@ func New(env string) (*Application, error) {
 	service := eventsvc.New(tx, idemRepo, eventRepo) 
 
 	// Init routes
-	routes := router.New(logger, service).RegisterRotes()
+	routes := router.New(logger, service, verifier).RegisterRotes()
 	server := &http.Server{
 		Addr:              settings.Server.Port,
 		Handler:           routes,
