@@ -14,10 +14,11 @@ const (
 
 type Settings struct {
 	Environment string `json:"environment"`
-	Server 		Server  `json:"server"`
+	Server 		Server `json:"server"`
 	Db	   		Db	   `json:"db"`
 	Kafka		Kafka  `json:"kafka"`
 	Worker 		Worker `json:"worker"`
+	Auth 		Auth   `json:"auth"`
 }
 
 type Server struct {
@@ -50,6 +51,12 @@ type Worker struct {
 	MaxAttempts 	int `json:"max_attempts"`
 	BackoffSeconds 	int `json:"backoff_seconds"`
 	TimeoutSeconds	int `json:"timeout_seconds"`
+}
+
+type Auth struct {
+	Issuer 		  string `json:"issuer"`
+	Audience 	  string `json:"audience"`
+	PublicKeyPath string `json:"public_key_path"`
 }
 
 func New(env string) (*Settings, error) {

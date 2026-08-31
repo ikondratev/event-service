@@ -2,6 +2,7 @@
 /bin/*
 .env
 settings/*.json
+settings/*.pem
 *.csv
 *.sqlite3
 *.log
