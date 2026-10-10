@@ -3,9 +3,9 @@ package idempotency
 import "context"
 
 type IdempotencyKey struct {
-	Key 	    string
+	Key         string
 	RequestHash string
-	EventID 	*int64
+	EventID     *int64
 }
 
 type IdempotencyRepo interface {

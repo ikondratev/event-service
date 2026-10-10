@@ -13,17 +13,15 @@ func ToDomain(req CreateRequest) (*event.Event, error) {
 	}
 
 	return &event.Event{
-		Kind:   req.Kind,
-		Status: req.Status,
-		Data:   string(raw),
+		Kind: req.Kind,
+		Data: string(raw),
 	}, nil
 }
 
 func ToResponse(e event.Event) Response {
-	return Response {
+	return Response{
 		ID:        e.ID,
 		Kind:      e.Kind,
-		Status:    e.Status,
 		CreatedAt: e.CreatedAt,
 	}
 }

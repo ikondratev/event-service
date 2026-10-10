@@ -14,19 +14,19 @@ import (
 )
 
 type OutboxWorker struct {
-	logger 	   *slog.Logger
-	repo 	   *postgres.OutboxRepo
+	logger     *slog.Logger
+	repo       *postgres.OutboxRepo
 	producer   kafka.Publisher
 	settings   *settings.Settings
-	done	   sync.WaitGroup
-	instanceID string 
+	done       sync.WaitGroup
+	instanceID string
 }
 
 func NewOutboxWorker(
-	logger 	   *slog.Logger,
-	repo 	   *postgres.OutboxRepo,
-	publisher  kafka.Publisher,
-	settings   *settings.Settings,
+	logger *slog.Logger,
+	repo *postgres.OutboxRepo,
+	publisher kafka.Publisher,
+	settings *settings.Settings,
 ) *OutboxWorker {
 	instanceID := os.Getenv("POD_NAME")
 	if instanceID == "" {
@@ -39,10 +39,10 @@ func NewOutboxWorker(
 	}
 
 	return &OutboxWorker{
-		logger: logger,
-		repo: repo,
-		producer: publisher,
-		settings: settings,
+		logger:     logger,
+		repo:       repo,
+		producer:   publisher,
+		settings:   settings,
 		instanceID: instanceID,
 	}
 }
@@ -51,10 +51,10 @@ func (w *OutboxWorker) Run(ctx context.Context) {
 	w.done.Add(1)
 	defer w.done.Done()
 
-	ticker := time.NewTicker(time.Duration(w.settings.Kafka.PollInterval)*time.Second)
+	ticker := time.NewTicker(time.Duration(w.settings.Kafka.PollInterval) * time.Second)
 	defer ticker.Stop()
 
-	w.logger.Info("OutboxWorker strarted", 
+	w.logger.Info("OutboxWorker strarted",
 		"poll_interval", w.settings.Kafka.PollInterval,
 		"batch_size", w.settings.Kafka.BatchSize,
 		"instance_id", w.instanceID,
@@ -62,10 +62,10 @@ func (w *OutboxWorker) Run(ctx context.Context) {
 
 	for {
 		select {
-		case <- ctx.Done():
+		case <-ctx.Done():
 			w.logger.Info("OutboxWorker stopped")
 			return
-		case <- ticker.C:
+		case <-ticker.C:
 			w.processBatch(ctx)
 		}
 	}
@@ -80,9 +80,9 @@ func (w *OutboxWorker) processBatch(ctx context.Context) {
 	backoff := time.Duration(w.settings.Worker.BackoffSeconds) * time.Second
 
 	msgs, err := w.repo.Claim(
-		ctx, 
-		w.instanceID, 
-		w.settings.Kafka.BatchSize, 
+		ctx,
+		w.instanceID,
+		w.settings.Kafka.BatchSize,
 		lease,
 	)
 	if err != nil {
@@ -96,9 +96,9 @@ func (w *OutboxWorker) processBatch(ctx context.Context) {
 	for _, msg := range msgs {
 		key := []byte(fmt.Sprint(msg.EventID))
 		if err := w.producer.Publish(
-			workCtx, 
-			msg.Topic, 
-			key, 
+			workCtx,
+			msg.Topic,
+			key,
 			msg.Payload,
 		); err != nil {
 			w.logger.Error("kafka publish failed",

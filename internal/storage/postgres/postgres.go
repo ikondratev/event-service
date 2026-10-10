@@ -4,8 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/ikondratev/event-service/internal/settings"
 	"time"
+
+	"github.com/ikondratev/event-service/internal/settings"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -17,12 +18,12 @@ type Db struct {
 func New(ctx context.Context, settings *settings.Settings) (*Db, error) {
 	db, err := sql.Open("pgx", settings.Db.Url)
 	if err != nil {
-		return nil, fmt.Errorf("Open db error: %w", err)
+		return nil, fmt.Errorf("open db error: %w", err)
 	}
 
 	db.SetConnMaxIdleTime(time.Duration(settings.Db.MaxLifeTime))
 	db.SetMaxIdleConns(int(settings.Db.MaxIdleConnection))
-	db.SetConnMaxLifetime(time.Duration(settings.Db.MaxLifeTime)*time.Minute)
+	db.SetConnMaxLifetime(time.Duration(settings.Db.MaxLifeTime) * time.Minute)
 	db.SetMaxOpenConns(settings.Db.OpenConnection)
 
 	pingCtx, cancel := context.WithTimeout(ctx, time.Duration(settings.Db.StartDelay)*time.Second)

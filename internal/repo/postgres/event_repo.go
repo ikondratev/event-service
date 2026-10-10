@@ -12,14 +12,14 @@ import (
 )
 
 type EventRepo struct {
-	db 		   *sql.DB
-	settings   *settings.Settings
+	db       *sql.DB
+	settings *settings.Settings
 }
 
 func NewEventRepo(db *sql.DB, settings *settings.Settings) *EventRepo {
 	return &EventRepo{
-		db: 		db,
-		settings:   settings,
+		db:       db,
+		settings: settings,
 	}
 }
 
@@ -32,14 +32,14 @@ func (r *EventRepo) Create(ctx context.Context, e *event.Event) error {
 	}
 
 	queryEvent := `
-		INSERT INTO events (kind, data, status)
-		VALUES ($1, $2, $3)
+		INSERT INTO events (kind, data)
+		VALUES ($1, $2)
 		RETURNING id, created_at
 	`
 
-	if err := tx.QueryRowContext(ctx, queryEvent, e.Kind, e.Data, e.Status).
+	if err := tx.QueryRowContext(ctx, queryEvent, e.Kind, e.Data).
 		Scan(&e.ID, &e.CreatedAt); err != nil {
-			return err
+		return err
 	}
 
 	var dataObj any
@@ -50,7 +50,6 @@ func (r *EventRepo) Create(ctx context.Context, e *event.Event) error {
 	payload, err := json.Marshal(map[string]any{
 		"id":         e.ID,
 		"kind":       e.Kind,
-		"status":     e.Status,
 		"created_at": e.CreatedAt,
 		"data":       dataObj,
 	})
@@ -72,26 +71,25 @@ func (r *EventRepo) Create(ctx context.Context, e *event.Event) error {
 
 func (r *EventRepo) List(ctx context.Context) ([]event.Event, error) {
 	query := `
-		SELECT id, kind, data, status, created_at
+		SELECT id, kind, data, created_at
 		FROM events
 		ORDER BY id DESC
 		LIMIT 100
 	`
 
-	rows, err := r.db.QueryContext(ctx,query)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	events := make([]event.Event, 0)
 	for rows.Next() {
 		var e event.Event
 		if err := rows.Scan(
-			&e.ID, 
-			&e.Kind, 
-			&e.Data, 
-			&e.Status, 
+			&e.ID,
+			&e.Kind,
+			&e.Data,
 			&e.CreatedAt); err != nil {
 			return nil, err
 		}
@@ -108,7 +106,7 @@ func (r *EventRepo) GetByID(ctx context.Context, id int64) (*event.Event, error)
 	}
 
 	query := `
-		SELECT id, kind, data, status, created_at
+		SELECT id, kind, data, created_at
 		FROM events
 		WHERE id = $1
 	`
@@ -116,7 +114,7 @@ func (r *EventRepo) GetByID(ctx context.Context, id int64) (*event.Event, error)
 	var e event.Event
 
 	err = tx.QueryRowContext(ctx, query, id).Scan(
-		&e.ID, &e.Kind, &e.Data, &e.Status, &e.CreatedAt,
+		&e.ID, &e.Kind, &e.Data, &e.CreatedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, event.ErrNotFound

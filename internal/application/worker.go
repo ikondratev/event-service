@@ -19,26 +19,26 @@ import (
 )
 
 type Worker struct {
-	logger *slog.Logger
+	logger   *slog.Logger
 	settings *settings.Settings
 	producer *kafka.Producer
-	db *postgres.Db
+	db       *postgres.Db
 	kfWorker *worker.OutboxWorker
 }
 
 func NewWorker(env string) (*Worker, error) {
- 	logger := logger.New(env)
+	logger := logger.New(env)
 
 	// Ini settings
 	settings, err := settings.New(env)
 	if err != nil {
-		return nil, fmt.Errorf("Error: Load settings: %w", err)
+		return nil, fmt.Errorf("load settings: %w", err)
 	}
 
 	// Init db
 	database, err := postgres.New(context.Background(), settings)
 	if err != nil {
-		return nil, fmt.Errorf("Open db error: %w", err)
+		return nil, fmt.Errorf("open db error: %w", err)
 	}
 
 	// Init repos
@@ -50,11 +50,11 @@ func NewWorker(env string) (*Worker, error) {
 	// Workers
 	outboxWorker := worker.NewOutboxWorker(logger, outboxRepo, producer, settings)
 
-	return &Worker {
-		logger: logger,
+	return &Worker{
+		logger:   logger,
 		settings: settings,
 		producer: producer,
-		db: database,
+		db:       database,
 		kfWorker: outboxWorker,
 	}, nil
 }
@@ -68,7 +68,7 @@ func (w *Worker) Run() error {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-	sig := <- quit
+	sig := <-quit
 	w.logger.Info("outbox worker received signal", "signal", sig)
 
 	cancel()

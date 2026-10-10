@@ -9,7 +9,7 @@ import (
 )
 
 type Transactor interface {
-	WithinTx(ctx context.Context, fn func(ctx context.Context)error) error
+	WithinTx(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
 type Service struct {
@@ -19,15 +19,15 @@ type Service struct {
 }
 
 func New(
-	tx Transactor, 
-	keys idempotency.IdempotencyRepo, 
+	tx Transactor,
+	keys idempotency.IdempotencyRepo,
 	events event.EventRepo,
-) (*Service) {
+) *Service {
 	return &Service{tx: tx, keys: keys, events: events}
 }
 
 type CreateResult struct {
-	Event 	 event.Event
+	Event    event.Event
 	Replayed bool
 }
 

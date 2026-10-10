@@ -1,8 +1,8 @@
 package logger
 
 import (
-	"os"
 	"log/slog"
+	"os"
 )
 
 func New(env string) *slog.Logger {
