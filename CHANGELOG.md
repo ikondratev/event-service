@@ -1,7 +1,21 @@
 # Changelog
 
-## [Unreleased]
+## [0.9.0] - 2026-10-10
+### Added
+
+- gRPC `EventService.CreateEvent`
+- Graceful shutdown stops
+- Pull request CI: golangci-lint and `go test ./...`.
+
 ### Changed
+
+- HTTP keeps `GET /ping` for Swarm and Kubernetes health checks.
+
+### Removed
+
+- HTTP create and list event routes.
+- Event status and `payment_data.status`. Migration `000005` drops `events.status`.
+- The Kafka outbox payload no longer includes event status. Outbox delivery status is unchanged.
 
 ## [0.8.0] - 2026-08-31
 ### Added
