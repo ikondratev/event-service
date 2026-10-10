@@ -13,7 +13,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var ErrInvalidToken = errors.New("Invalid token")
+var ErrInvalidToken = errors.New("invalid token")
 
 type Verifier struct {
 	key      *rsa.PublicKey
@@ -48,7 +48,6 @@ func NewVerifier(issuer, audience, publicKeyPath string) (*Verifier, error) {
 		audience: audience,
 	}, nil
 }
-
 
 func (v *Verifier) Parse(token string) (Identity, error) {
 	parsed, err := jwt.ParseWithClaims(

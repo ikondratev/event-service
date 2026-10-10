@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package event.v1;
+
+option go_package = "github.com/ikondratev/event-service/internal/eventpb;eventpb";
+
+service EventService {
+  rpc CreateEvent (CreateEventRequest) returns (CreateEventResponse);
+}
+
+message CreateEventRequest {
+  string kind = 1;
+  EventData data = 2;
+}
+
+message EventData {
+  PaymentData payment_data = 1;
+  PaymentDevice payment_device = 2;
+}
+
+message PaymentData {
+  string account_id = 1;
+  string ip_addres = 2;
+  Location location = 3;
+  double amount = 4;
+  string currency = 5;
+  int64 timestamp = 6;
+  string user_email = 7;
+  string user_phone = 8;
+}
+
+message Location {
+  string lat = 1;
+  string lon = 2;
+}
+
+message PaymentDevice {
+  string token = 1;
+  string type = 2;
+}
+
+message CreateEventResponse {
+  int64 id = 1;
+  string kind = 2;
+  string status = 3;
+  string created_at = 4;
+}

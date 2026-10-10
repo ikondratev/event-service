@@ -9,16 +9,21 @@ import (
 
 const (
 	settingsPath = "settings"
-	fileName = "settings.json"
+	fileName     = "settings.json"
 )
 
 type Settings struct {
-	Environment string `json:"environment"`
-	Server 		Server `json:"server"`
-	Db	   		Db	   `json:"db"`
-	Kafka		Kafka  `json:"kafka"`
-	Worker 		Worker `json:"worker"`
-	Auth 		Auth   `json:"auth"`
+	Environment string   `json:"environment"`
+	Server      Server   `json:"server"`
+	Db          Db       `json:"db"`
+	Kafka       Kafka    `json:"kafka"`
+	Worker      Worker   `json:"worker"`
+	Auth        Auth     `json:"auth"`
+	Upstream    Upstream `json:"upstream"`
+}
+
+type Upstream struct {
+	Port string `json:"port"`
 }
 
 type Server struct {
@@ -27,41 +32,41 @@ type Server struct {
 	HeaderTimeout   int    `json:"header_timout"`
 	ReadTimeout     int    `json:"read_timout"`
 	WriteTimeout    int    `json:"write_timeout"`
-	IdleTimeout     int    `json:"idle_timeout"` 
+	IdleTimeout     int    `json:"idle_timeout"`
 }
 
 type Kafka struct {
-	Brokers 	   []string 		 `json:"brokers"`
-	Topics  	   map[string]string `json:"topics"`
-	PollInterval   int 				 `json:"poll_interval"`
-	BatchSize 	   int 				 `json:"batch_size"`
-	FlushTimeout   int 				 `json:"flush_timeout"`
+	Brokers      []string          `json:"brokers"`
+	Topics       map[string]string `json:"topics"`
+	PollInterval int               `json:"poll_interval"`
+	BatchSize    int               `json:"batch_size"`
+	FlushTimeout int               `json:"flush_timeout"`
 }
 
 type Db struct {
-	Url 		   string `json:"url"`
-	OpenConnection    int `json:"open_conn"`
-	MaxIdleConnection int `json:"max_idle_conn"`
-	MaxLifeTime		  int `json:"max_life_time"`
-	StartDelay		  int `json:"start_delay"`
+	Url               string `json:"url"`
+	OpenConnection    int    `json:"open_conn"`
+	MaxIdleConnection int    `json:"max_idle_conn"`
+	MaxLifeTime       int    `json:"max_life_time"`
+	StartDelay        int    `json:"start_delay"`
 }
 
 type Worker struct {
-	LeaseSeconds 	int `json:"lease_seconds"`
-	MaxAttempts 	int `json:"max_attempts"`
-	BackoffSeconds 	int `json:"backoff_seconds"`
-	TimeoutSeconds	int `json:"timeout_seconds"`
+	LeaseSeconds   int `json:"lease_seconds"`
+	MaxAttempts    int `json:"max_attempts"`
+	BackoffSeconds int `json:"backoff_seconds"`
+	TimeoutSeconds int `json:"timeout_seconds"`
 }
 
 type Auth struct {
-	Issuer 		  string `json:"issuer"`
-	Audience 	  string `json:"audience"`
+	Issuer        string `json:"issuer"`
+	Audience      string `json:"audience"`
 	PublicKeyPath string `json:"public_key_path"`
 }
 
 func New(env string) (*Settings, error) {
 	var set Settings
-	filePath := fmt.Sprintf("%s/%s.%s", settingsPath, env, fileName )
+	filePath := fmt.Sprintf("%s/%s.%s", settingsPath, env, fileName)
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("LoadFileError: %w", err)

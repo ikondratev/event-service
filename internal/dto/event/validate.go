@@ -12,7 +12,6 @@ import (
 
 var (
 	allowedKinds    = map[string]struct{}{"payment.created": {}}
-	allowedStatuses = map[string]struct{}{"pending": {}, "success": {}, "failed": {}}
 	allowedCurrency = map[string]struct{}{"RUB": {}, "USD": {}, "EUR": {}}
 	allowedDevices  = map[string]struct{}{"card": {}, "apple_pay": {}, "google_pay": {}}
 )
@@ -42,15 +41,9 @@ func (r CreateRequest) Validate() error {
 	v := &ValidationError{}
 
 	if strings.TrimSpace(r.Kind) == "" {
-		v.add("kind", "is required") 
+		v.add("kind", "is required")
 	} else if _, ok := allowedKinds[r.Kind]; !ok {
 		v.add("kind", "unsuppoted value")
-	}
-
-	if strings.TrimSpace(r.Status) == "" {
-		v.add("status", "is required")
-	} else if _, ok := allowedStatuses[r.Status]; !ok {
-		v.add("status", "unsupported state")
 	}
 
 	r.Data.validate(v)
@@ -71,7 +64,7 @@ func (p PaymentData) validate(v *ValidationError) {
 	if strings.TrimSpace(p.AccountID) == "" {
 		v.add("data.payment_data.account_id", "is required")
 	}
-	
+
 	if strings.TrimSpace(p.IP) == "" {
 		v.add("data.payment_data.ip_addres", "is required")
 	}
@@ -84,9 +77,6 @@ func (p PaymentData) validate(v *ValidationError) {
 		v.add("data.payment_data.currency", "unsupported currency")
 	}
 
-		if _, ok := allowedStatuses[p.Status]; !ok {
-		v.add("data.payment_data.status", "unsupported value")
-	}
 	if p.Timestamp <= 0 {
 		v.add("data.payment_data.timestamp", "must be a unix timestamp")
 	} else if time.Unix(p.Timestamp, 0).After(time.Now().Add(24 * time.Hour)) {

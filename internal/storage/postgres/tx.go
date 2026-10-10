@@ -29,7 +29,7 @@ func (t *Transactor) WithinTx(ctx context.Context, fn func(ctx context.Context) 
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	if err := fn(withTx(ctx, tx)); err != nil {
 		return err

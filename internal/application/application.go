@@ -2,19 +2,18 @@ package application
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/ikondratev/event-service/internal/auth"
+	"github.com/ikondratev/event-service/internal/grpcserver"
+	"github.com/ikondratev/event-service/internal/httpserver"
 	"github.com/ikondratev/event-service/internal/logger"
-	"github.com/ikondratev/event-service/internal/router"
-	"github.com/ikondratev/event-service/internal/service/event"
+	eventsvc "github.com/ikondratev/event-service/internal/service/event"
 	"github.com/ikondratev/event-service/internal/settings"
 	"github.com/ikondratev/event-service/internal/storage/postgres"
 
@@ -22,10 +21,11 @@ import (
 )
 
 type Application struct {
-	logger   	 *slog.Logger
-	settings 	 *settings.Settings
-	server   	 *http.Server
-	db 		 	 *postgres.Db
+	logger   *slog.Logger
+	settings *settings.Settings
+	server   *httpserver.HttpServer
+	db       *postgres.Db
+	grpc     *grpcserver.Listener
 }
 
 func New(env string) (*Application, error) {
@@ -34,7 +34,7 @@ func New(env string) (*Application, error) {
 	// Ini settings
 	settings, err := settings.New(env)
 	if err != nil {
-		return nil, fmt.Errorf("Error: Load settings: %w", err)
+		return nil, fmt.Errorf("load settings: %w", err)
 	}
 
 	// Init verifier
@@ -50,7 +50,7 @@ func New(env string) (*Application, error) {
 	// Init db
 	database, err := postgres.New(context.Background(), settings)
 	if err != nil {
-		return nil, fmt.Errorf("Open db error: %w", err)
+		return nil, fmt.Errorf("open db error: %w", err)
 	}
 
 	// Init repos
@@ -59,31 +59,29 @@ func New(env string) (*Application, error) {
 
 	// Services
 	tx := postgres.NewTransactor(database.Adapter)
-	service := eventsvc.New(tx, idemRepo, eventRepo) 
+	service := eventsvc.New(tx, idemRepo, eventRepo)
+
+	// gRpc
+	grpcHandler := grpcserver.New(logger, service, verifier)
+	grpcListerner := grpcserver.NewListener(settings, logger, grpcHandler)
 
 	// Init routes
-	routes := router.New(logger, service, verifier).RegisterRotes()
-	server := &http.Server{
-		Addr:              settings.Server.Port,
-		Handler:           routes,
-		ReadHeaderTimeout: time.Duration(settings.Server.HeaderTimeout) * time.Second,
-		ReadTimeout:       time.Duration(settings.Server.ReadTimeout)   * time.Second,
-		WriteTimeout:      time.Duration(settings.Server.WriteTimeout)  * time.Second,
-		IdleTimeout:       time.Duration(settings.Server.IdleTimeout)   * time.Second,
-	}
-	
+	httpServer := httpserver.NewHTTPServer(settings, logger)
+
 	// Finaly App
 	return &Application{
-		logger:    logger,
-		settings:  settings,
-		server:    server,
-		db: 	   database,
+		logger:   logger,
+		settings: settings,
+		server:   httpServer,
+		db:       database,
+		grpc:     grpcListerner,
 	}, nil
 }
 
 func (a *Application) Run() error {
-	chErr := make(chan error, 1)
-	go a.startServer(chErr)
+	chErr := make(chan error, 2)
+	go a.server.Start(chErr)
+	go a.grpc.Start(chErr)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -93,13 +91,20 @@ func (a *Application) Run() error {
 	}
 
 	ctx, cancel := context.WithTimeout(
-		context.Background(), 
+		context.Background(),
 		time.Duration(a.settings.Server.WaitingShutdown)*time.Second,
 	)
 	defer cancel()
 
+	// Stop gRpc
+	if err := a.grpc.Stop(ctx); err != nil {
+		a.logger.Error("gRpc error", "err", err)
+		return fmt.Errorf("grpc shuddown error: %w", err)
+	}
+
 	// Stop http
-	if err := a.server.Shutdown(ctx); err != nil {
+	if err := a.server.Stop(ctx); err != nil {
+		a.logger.Error("http server error", "err", err)
 		return fmt.Errorf("server shutdown error: %w", err)
 	}
 
@@ -115,16 +120,12 @@ func (a *Application) Run() error {
 	return nil
 }
 
-func (a *Application) startServer(errCh chan<- error) {
-	a.logger.Info("Server started...", "addr", a.server.Addr)
-	errCh <- a.server.ListenAndServe()
-}
-
 func (a *Application) waitShutdown(errCh <-chan error, quit <-chan os.Signal) error {
 	select {
 	case err := <-errCh:
-		if !errors.Is(err, http.ErrServerClosed) {
-			return fmt.Errorf("Server error %w", err)
+		if !httpserver.IsStopped(err) && !grpcserver.IsStopped(err) {
+			a.logger.Error("stop error", "err", err)
+			return fmt.Errorf("server error: %w", err)
 		}
 		return nil
 

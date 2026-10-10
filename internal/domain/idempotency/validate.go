@@ -12,6 +12,6 @@ func ValidateKey(key string) error {
 	} else if err := uuid.Validate(key); err != nil {
 		return ErrInvalidKey
 	}
-	
+
 	return nil
 }

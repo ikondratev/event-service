@@ -12,9 +12,9 @@ import (
 var ErrLostLease = errors.New("outbox: lost lease")
 
 type OutboxMessage struct {
-	ID 		int64
+	ID      int64
 	EventID int64
-	Topic 	string
+	Topic   string
 	Payload json.RawMessage
 }
 
@@ -27,8 +27,8 @@ func NewOutboxRepo(db *sql.DB) *OutboxRepo {
 }
 
 func (r *OutboxRepo) MarkSent(
-	ctx context.Context, 
-	id int64, 
+	ctx context.Context,
+	id int64,
 	instanceID string,
 ) error {
 	query := `
@@ -98,7 +98,7 @@ func (r *OutboxRepo) Claim(
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	msgs := make([]OutboxMessage, 0)
 	for rows.Next() {
@@ -162,4 +162,3 @@ func (r *OutboxRepo) Nack(
 
 	return nil
 }
-

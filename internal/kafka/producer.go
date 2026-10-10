@@ -3,10 +3,12 @@ package kafka
 import (
 	"context"
 	"fmt"
+
 	"github.com/ikondratev/event-service/internal/settings"
 
 	kafkago "github.com/segmentio/kafka-go"
 )
+
 type Publisher interface {
 	Publish(ctx context.Context, topic string, key, value []byte) error
 	Close() error
@@ -19,7 +21,7 @@ type Producer struct {
 func NewProducer(settings *settings.Settings) *Producer {
 	return &Producer{
 		writer: &kafkago.Writer{
-			Addr: kafkago.TCP(settings.Kafka.Brokers...),
+			Addr:     kafkago.TCP(settings.Kafka.Brokers...),
 			Balancer: &kafkago.LeastBytes{},
 		},
 	}
@@ -32,7 +34,7 @@ func (p *Producer) Publish(ctx context.Context, topic string, key, value []byte)
 		Value: value,
 	})
 	if err != nil {
-		return fmt.Errorf("Kafka publish erorr: %w", err)
+		return fmt.Errorf("kafka publish error: %w", err)
 	}
 
 	return nil

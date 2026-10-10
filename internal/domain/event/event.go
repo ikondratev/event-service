@@ -1,15 +1,14 @@
 package event
 
 import (
-	"time"
 	"context"
-) 
+	"time"
+)
 
 type Event struct {
-	ID 		  int64
-	Kind 	  string
-	Data 	  string
-	Status 	  string
+	ID        int64
+	Kind      string
+	Data      string
 	CreatedAt time.Time
 }
 
