@@ -45,7 +45,9 @@ func (s *Server) CreateEvent(
 	md, _ := metadata.FromIncomingContext(ctx)
 	authorization := first(md.Get("authorization"))
 	idempotencyKey := first(md.Get("idempotency-key"))
+	traceID := first(md.Get("x-trace-id"))
 
+	log := s.log.With("trace_id", traceID)
 	token, ok := strings.CutPrefix(authorization, "Bearer")
 	if !ok || strings.TrimSpace(token) == "" {
 		return nil, status.Error(codes.Unauthenticated, "unauthorized")
@@ -70,7 +72,7 @@ func (s *Server) CreateEvent(
 
 	hash, err := eventdto.Hash(req)
 	if err != nil {
-		s.log.Error("hash event", "error", err)
+		log.Error("hash event", "error", err)
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 
@@ -84,9 +86,14 @@ func (s *Server) CreateEvent(
 		if errors.Is(err, idempotency.ErrPayloadMismatch) {
 			return nil, status.Error(codes.AlreadyExists, "idempotency key conflict")
 		}
-		s.log.Error("create event", "error", err)
+		log.Error("create event", "error", err)
 		return nil, status.Error(codes.Internal, "internal error")
 	}
+
+	log.Info("event created",
+		"event_id", result.Event.ID,
+		"replayed", result.Replayed,
+	)
 
 	return &eventpb.CreateEventResponse{
 		Id:        result.Event.ID,
