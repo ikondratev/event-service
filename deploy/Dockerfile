@@ -10,8 +10,8 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build \
     -ldflags="-s -w" \
-    -o /app/bin/http \
-    ./cmd/http
+    -o /app/bin/application \
+    ./cmd/app
 
 RUN CGO_ENABLED=0 GOOS=linux go build \
     -ldflags="-s -w" \
@@ -25,10 +25,10 @@ RUN apk add --no-cache ca-certificates \
 
 WORKDIR /app
 
-COPY --from=builder /app/bin/http /app/http
+COPY --from=builder /app/bin/application /app/application
 COPY --from=builder /app/bin/worker /app/worker
 
 USER appuser
 EXPOSE 3333
 
-CMD ["/app/http"]
+CMD ["/app/application"]
